@@ -21,12 +21,13 @@ const (
 
 // Manager is the central hub that manages all clients and game sessions.
 type Manager struct {
-	sync.RWMutex
-	clients    map[*Client]bool
-	games      map[*game.Game]bool // A set of active games
-	waitlist   []*Client
-	register   chan *Client
-	unregister chan *Client
+	sync.RWMutex // Used to manage read and write locks for concurrency without errors
+	clients      map[*Client]bool
+	games        map[*game.Game]bool // A set of active games
+	waitlist     []*Client
+	register     chan *Client // input channel for register signal
+	unregister   chan *Client // input channel for unregister signal
+	route        chan *Event  // channel for incoming events
 }
 
 // NewManager creates and starts a new manager.
@@ -37,6 +38,7 @@ func NewManager() *Manager {
 		waitlist:   make([]*Client, 0),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		route:      make(chan *Event),
 	}
 	go m.run()
 	return m
@@ -57,6 +59,9 @@ func (m *Manager) run() {
 
 		case <-ticker.C:
 			m.findMatches()
+
+		case event := <-m.route:
+			m.handleEvent(event)
 		}
 	}
 }
@@ -170,6 +175,9 @@ func (m *Manager) createGame(player1, player2 *Client) {
 	newGame := game.NewGame()
 	m.games[newGame] = true
 
+	newGame.Players[0] = player1
+	newGame.Players[1] = player2
+
 	player1.game = newGame
 	player2.game = newGame
 	player1.playerID = 0
@@ -193,4 +201,23 @@ func (m *Manager) createGame(player1, player2 *Client) {
 
 	player1.egress <- p1Payload
 	player2.egress <- p2Payload
+}
+
+func (m *Manager) endGame(game *game.Game, result string, message string) {
+	log.Printf("[ERROR] Ending game %s. Reason: %s", game.ID, result)
+	
+	gameOverEvent := map[string]any {
+		"type": "game_over",
+		"payload": message,
+	}
+	payload, _ := json.Marshal(gameOverEvent)
+
+	for _, player := range game.Players {
+		if player != nil {
+			player.Send(payload)
+		}
+	}
+
+	delete(m.games, game)
+	return
 }

@@ -1,18 +1,19 @@
-// ws/client.go
 package ws
 
 import (
 	"backend/game"
-	"github.com/gorilla/websocket"
+	"encoding/json"
 	"log"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // Client represents a single player connected to the server.
 type Client struct {
 	conn             *websocket.Conn
 	manager          *Manager
-	game             *game.Game 
+	game             *game.Game
 	playerID         int
 	egress           chan []byte
 	Elo              int       `json:"elo"`
@@ -34,6 +35,17 @@ func (c *Client) readPump() {
 			}
 			break
 		}
+
+		var event Event
+		if err := json.Unmarshal(message, &event); err != nil {
+			log.Printf("[ERROR] %v", err)
+			continue
+		}
+
+		event.Client = c
+
+		c.manager.route <- &event
+
 		log.Printf("Message received: %s", message)
 	}
 }
@@ -55,4 +67,8 @@ func (c *Client) writePump() {
 			return
 		}
 	}
+}
+
+func (c *Client) Send(message []byte) {
+	c.egress <- message
 }

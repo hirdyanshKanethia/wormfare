@@ -1,0 +1,35 @@
+{
+  "type": "game.place_worms",
+  "payload": [
+    {
+      "wormType": "General C. Crawlington",
+      "x": 0,
+      "y": 0,
+      "orientation": "horizontal"
+    },
+    {
+      "wormType": "Major Slitherford",
+      "x": 1,
+      "y": 2,
+      "orientation": "vertical"
+    },
+    {
+      "wormType": "Captain Coilton",
+      "x": 3,
+      "y": 4,
+      "orientation": "horizontal"
+    },
+    {
+      "wormType": "Sarge Wiggles",
+      "x": 6,
+      "y": 1,
+      "orientation": "vertical"
+    },
+    {
+      "wormType": "Private Squirmley",
+      "x": 5,
+      "y": 7,
+      "orientation": "horizontal"
+    }
+  ]
+}

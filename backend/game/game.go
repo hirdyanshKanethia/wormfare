@@ -5,25 +5,41 @@ import (
 	"strconv"
 )
 
-// Game represents the state of a single game.
-// It is completely independent of the WebSocket logic.
-type Game struct {
-	ID      string
-	Boards  [2]*Board // Index 0 for Player 1, Index 1 for Player 2
-	Turn    int       // 0 for Player 1, 1 for Player 2
+type GameState string
+
+const (
+	StatePlacingWorms GameState = "placing_worms"
+	StatePlayer1Turn  GameState = "player_1_turn"
+	StatePlayer2Turn  GameState = "player_2_turn"
+	StateGameOver     GameState = "game_over"
+)
+
+type Player interface {
+	Send([]byte)
 }
 
-// NewGame creates a new Game instance with fresh boards.
-func NewGame() *Game {
-	// Create a simple random ID for the game
-	id := strconv.Itoa(rand.Intn(10000))
+type PlayerState struct {
+	Board *Board
+	Army  []*Worm
+	Ready bool
+}
 
+type Game struct {
+	ID            string
+	State         GameState
+	PlayersStates [2]*PlayerState
+	Players       [2]Player
+	Winner        int // 0 for Player 1, 1 for Player 2, -1 for no winner yet
+}
+
+func NewGame() *Game {
 	return &Game{
-		ID: id,
-		Boards: [2]*Board{
-			{}, // Player 1's empty board
-			{}, // Player 2's empty board
+		ID:    strconv.Itoa(rand.Intn(10000)),
+		State: StatePlacingWorms,
+		PlayersStates: [2]*PlayerState{
+			{Board: &Board{}, Army: NewArmy()}, // Player 1
+			{Board: &Board{}, Army: NewArmy()}, // Player 2
 		},
-		Turn: 0, // Player 1 starts
+		Winner: -1,
 	}
 }

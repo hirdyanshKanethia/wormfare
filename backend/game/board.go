@@ -6,7 +6,14 @@ const (
 	BoardHeight = 8
 )
 
-// Board represents the 8x8 game grid. The integer value can represent
-// different states: 0=empty, 1=ship, 2=hit, 3=miss.
-type Board [BoardHeight][BoardWidth]int
+type CellState int
 
+const (
+	CellStateEmpty    CellState = iota // 0
+	CellStateWorm                      // 1
+	CellStateHit                       // 2
+	CellStateMiss                      // 3
+	CellStateMartyred                  // 4
+)
+
+type Board [BoardHeight][BoardWidth]CellState
