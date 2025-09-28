@@ -4,6 +4,7 @@ import (
 	"backend/game"
 	"encoding/json"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -16,6 +17,7 @@ type Client struct {
 	game             *game.Game
 	playerID         int
 	egress           chan []byte
+	once             sync.Once
 	Elo              int       `json:"elo"`
 	JoinedWaitlistAt time.Time `json:"-"`
 }
@@ -46,7 +48,7 @@ func (c *Client) readPump() {
 
 		c.manager.route <- &event
 
-		log.Printf("Message received: %s", message)
+		// log.Printf("Message received: %s", message)
 	}
 }
 
@@ -69,6 +71,14 @@ func (c *Client) writePump() {
 	}
 }
 
+// Helper function to send message to the client simply using the struct parameter
 func (c *Client) Send(message []byte) {
 	c.egress <- message
+}
+
+// Helper function to disconnect a client again using a struct parameter
+func (c *Client) Disconnect() {
+	c.once.Do(func() {
+		close(c.egress)
+	})
 }

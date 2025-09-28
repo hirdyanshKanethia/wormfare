@@ -16,6 +16,7 @@ const (
 
 type Player interface {
 	Send([]byte)
+	Disconnect()
 }
 
 type PlayerState struct {

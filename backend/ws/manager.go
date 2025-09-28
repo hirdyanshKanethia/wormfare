@@ -1,14 +1,20 @@
 package ws
 
 import (
+	"backend/game"
 	"encoding/json"
 	"log"
 	"math"
 	"math/rand"
 	"sync"
 	"time"
+)
 
-	"backend/game"
+type EndReason int
+
+const (
+	ReasonWinLoss EndReason = iota
+	ReasonDraw
 )
 
 // Matchmaking constants
@@ -88,43 +94,85 @@ func (m *Manager) registerClient(client *Client) {
 	client.egress <- payload
 }
 
-// unregisterClient -> handles disconnections, including win/loss declarations.
+// unregisterClient -> handles game cleanup and result for cases like undefined disconnection of client
 func (m *Manager) unregisterClient(client *Client) {
+	// Check if the client was on the waitlist
+	for i, waitingClient := range m.waitlist {
+		if waitingClient == client {
+			m.waitlist = append(m.waitlist[:i], m.waitlist[i+1:]...)
+			log.Printf("Client removed from waitlist.")
+			delete(m.clients, client)
+			return
+		}
+	}
+
+	// If they weren't on the waitlist, they must have been in a game.
+	// We treat this scenario as a loss.
+	if game := client.game; game != nil {
+		// The disconnected client is the loser.
+		m.endGame(game, ReasonWinLoss, client)
+	}
+}
+
+// endGame -> Ends the game for cases that end the game cleanly (eg. win/loss)
+func (m *Manager) endGame(game *game.Game, reason EndReason, loser *Client) {
 	m.Lock()
 	defer m.Unlock()
 
-	if _, ok := m.clients[client]; !ok {
+	// Check if game has already been cleaned up
+	if _, ok := m.games[game]; !ok {
 		return
 	}
-	delete(m.clients, client)
 
-	if game := client.game; game != nil {
-		log.Printf("Client from game %s disconnected. Declaring win/loss.", game.ID)
-		for opponent := range m.clients {
-			if opponent.game == game && opponent != client {
-				// Opponent win
-				opponent.Elo += eloChangeOnWinLoss
-				winEvent := map[string]any{"type": "game.win", "payload": map[string]any{"reason": "Opponent disconnected.", "newElo": opponent.Elo}}
-				payload, _ := json.Marshal(winEvent)
-				opponent.egress <- payload
-				// log.Printf("Player (Elo %d) wins. New ELO: %d", opponent.Elo-eloChangeOnWinLoss, opponent.Elo)
+	var finalMessage map[string]any
+
+	switch reason {
+	case ReasonWinLoss:
+		var winner *Client
+		// Find the winner by finding who isn't the loser
+		for _, p := range game.Players {
+			if c, ok := p.(*Client); ok && c != loser {
+				winner = c
 				break
 			}
 		}
 
-		// Disconnected player loss
-		client.Elo -= eloChangeOnWinLoss
-		// log.Printf("Player (Elo %d) loses. New ELO: %d", client.Elo+eloChangeOnWinLoss, client.Elo)
-		delete(m.games, game)
+		if winner != nil && loser != nil {
+			m.updateElo(winner, loser) // Handle ELO
+			finalMessage = createGameOverMessage("win", winner, loser)
+		}
+
+	case ReasonDraw:
+		finalMessage = createGameOverMessage("draw", nil, nil)
 	}
 
-	for i, waitingClient := range m.waitlist {
-		if waitingClient == client {
-			m.waitlist = append(m.waitlist[:i], m.waitlist[i+1:]...)
-			// log.Printf("Client removed from waitlist. Waitlist size: %d", len(m.waitlist))
-			break
+	// --- Final Cleanup ---
+	if finalMessage != nil {
+		payload, _ := json.Marshal(finalMessage)
+		for _, p := range game.Players {
+			if p != nil {
+				p.Send(payload)
+				time.AfterFunc(100*time.Millisecond, p.Disconnect)
+
+				if c, ok := p.(*Client); ok {
+					delete(m.clients, c)
+				}
+			}
 		}
 	}
+
+	delete(m.games, game)
+	log.Printf("Game %s and its players have been cleaned up.", game.ID)
+}
+
+func createGameOverMessage(result string, winner, loser *Client) map[string]any {
+	payload := map[string]any{"result": result}
+	if result == "win" && winner != nil && loser != nil {
+		payload["winner"] = winner.playerID
+		payload["newWinnerElo"] = winner.Elo
+		payload["newLoserElo"] = loser.Elo
+	}
+	return map[string]any{"type": "game_over", "payload": payload}
 }
 
 // findMatches -> matchmaking logic
@@ -203,21 +251,14 @@ func (m *Manager) createGame(player1, player2 *Client) {
 	player2.egress <- p2Payload
 }
 
-func (m *Manager) endGame(game *game.Game, result string, message string) {
-	log.Printf("[ERROR] Ending game %s. Reason: %s", game.ID, result)
-	
-	gameOverEvent := map[string]any {
-		"type": "game_over",
-		"payload": message,
-	}
-	payload, _ := json.Marshal(gameOverEvent)
+// updateElo -> Updates elo in the DB
+func (m *Manager) updateElo(winner, loser *Client) {
+	// TODO: Implement database update logic here.
 
-	for _, player := range game.Players {
-		if player != nil {
-			player.Send(payload)
-		}
-	}
+	winnerOldElo := winner.Elo
+	loserOldElo := loser.Elo
+	winner.Elo += eloChangeOnWinLoss
+	loser.Elo -= eloChangeOnWinLoss
 
-	delete(m.games, game)
-	return
+	log.Printf("ELO Change: Winner %d -> %d | Loser %d -> %d", winnerOldElo, winner.Elo, loserOldElo, loser.Elo)
 }

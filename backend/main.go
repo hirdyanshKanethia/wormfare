@@ -1,7 +1,7 @@
 package main
 
 import (
-	"backend/ws" 
+	"backend/ws"
 
 	"github.com/gin-gonic/gin"
 )

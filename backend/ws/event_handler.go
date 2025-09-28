@@ -3,6 +3,7 @@ package ws
 import (
 	"backend/game"
 	"encoding/json"
+	"fmt"
 	"log"
 )
 
@@ -12,6 +13,8 @@ type WormPlacement struct {
 	Y           int    `json:"y"`
 	Orientation string `json:"orientation"`
 }
+
+// ---------- MAIN HANLDER ----------
 
 func (m *Manager) handleEvent(event *Event) {
 	if event.Client.game == nil {
@@ -25,7 +28,7 @@ func (m *Manager) handleEvent(event *Event) {
 	case "game.place_worms":
 		m.handleWormPlacement(event)
 
-	case "fire_shot":
+	case "game.fire_shot":
 		m.handleFireShot(event)
 
 	default:
@@ -33,14 +36,17 @@ func (m *Manager) handleEvent(event *Event) {
 	}
 }
 
+// ---------- HELPER FUNCTIONS ----------
+
 func (m *Manager) handleWormPlacement(event *Event) {
-	valid := m.checkValidWormPlacement(event)
+	valid := m.doValidWormPlacement(event)
 
 	if !valid {
 		// Invalid Placement -> End match in a draw
-		log.Printf("Invalid Placement recieved from %v. Ending game %s in a draw", event.Client.game.PlayersStates[event.Client.playerID], event.Client.game.ID)
+		log.Printf("[ERROR] Invalid Placement recieved from %v. Ending game %s in a draw", event.Client.playerID, event.Client.game.ID)
 
-		m.endGame(event.Client.game, "draw", "The game has ended in a draw due to an unexpected error")
+		m.endGame(event.Client.game, ReasonDraw, nil)
+		return
 	}
 
 	client := event.Client
@@ -60,9 +66,12 @@ func (m *Manager) handleWormPlacement(event *Event) {
 		log.Printf("Both players in game %s are ready. Starting battle.", client.game.ID)
 		client.game.State = game.StatePlayer2Turn
 
+		game.PrintBoard(playerState.Board, fmt.Sprintf("Player %d board", client.playerID))
+		game.PrintBoard(opponentState.Board, fmt.Sprintf("Player %d board", opponentID))
+
 		startEvent := map[string]any{
 			"type":    "game.battle_start",
-			"payload": map[string]any{"turn": 0},
+			"payload": map[string]any{"turn": 1},
 		}
 		startPayload, _ := json.Marshal(startEvent)
 
@@ -72,7 +81,7 @@ func (m *Manager) handleWormPlacement(event *Event) {
 	}
 }
 
-func (m *Manager) checkValidWormPlacement(event *Event) bool {
+func (m *Manager) doValidWormPlacement(event *Event) bool {
 	// client := event.Client
 	playerState := event.Client.game.PlayersStates[event.Client.playerID]
 	board := playerState.Board
@@ -97,20 +106,25 @@ func (m *Manager) checkValidWormPlacement(event *Event) bool {
 	for _, p := range placements {
 		if p.Orientation == "horizontal" && (p.X+armyMap[p.WormType].Length < game.BoardWidth) && p.X >= 0 && 0 <= p.Y && p.Y < game.BoardHeight {
 			for i := 0; i < armyMap[p.WormType].Length; i++ {
-				if board[p.Y][p.X+i] == 1 {
-					log.Printf("[ERROR] Invlid placement due to worm overlapping")
-					return false
-				}
-				board[p.Y][p.X+i] = 1
-			}
-		} else if p.Orientation == "vertical" && (p.Y+armyMap[p.WormType].Length < game.BoardHeight) && p.Y >= 0 && 0 <= p.X && p.X < game.BoardWidth {
-			for i := 0; i < armyMap[p.WormType].Length; i++ {
-				if board[p.Y+i][p.X] == 1 {
+				id := armyMap[p.WormType].ID
+				if board[p.Y][p.X+i] < 0 {
 					log.Printf("[ERROR] Invalid placement due to worm overlapping")
 					return false
 				}
-				board[p.Y+i][p.X] = 1
+				board[p.Y][p.X+i] = game.CellState(id)
 			}
+		} else if p.Orientation == "vertical" && (p.Y+armyMap[p.WormType].Length < game.BoardHeight) && p.Y >= 0 && 0 <= p.X && p.X < game.BoardWidth {
+			for i := 0; i < armyMap[p.WormType].Length; i++ {
+				id := armyMap[p.WormType].ID
+				if board[p.Y+i][p.X] < 0 {
+					log.Printf("[ERROR] Invalid placement due to worm overlapping")
+					return false
+				}
+				board[p.Y+i][p.X] = game.CellState(id)
+			}
+		} else {
+			log.Printf("[ERROR] Invalid placement recieved from player %v", event.Client.playerID)
+			return false
 		}
 	}
 
@@ -118,5 +132,4 @@ func (m *Manager) checkValidWormPlacement(event *Event) bool {
 }
 
 func (m *Manager) handleFireShot(event *Event) {
-
 }
