@@ -96,20 +96,18 @@ func (m *Manager) registerClient(client *Client) {
 
 // unregisterClient -> handles game cleanup and result for cases like undefined disconnection of client
 func (m *Manager) unregisterClient(client *Client) {
-	// Check if the client was on the waitlist
+	// If client disconnected during waiting, just cleanup and return
 	for i, waitingClient := range m.waitlist {
 		if waitingClient == client {
 			m.waitlist = append(m.waitlist[:i], m.waitlist[i+1:]...)
-			log.Printf("Client removed from waitlist.")
+			log.Printf("[WS] Client removed from waitlist.")
 			delete(m.clients, client)
 			return
 		}
 	}
 
-	// If they weren't on the waitlist, they must have been in a game.
-	// We treat this scenario as a loss.
+	// if client disconnected during a game, cleanup the game for the client as the loser
 	if game := client.game; game != nil {
-		// The disconnected client is the loser.
 		m.endGame(game, ReasonWinLoss, client)
 	}
 }
@@ -119,7 +117,6 @@ func (m *Manager) endGame(game *game.Game, reason EndReason, loser *Client) {
 	m.Lock()
 	defer m.Unlock()
 
-	// Check if game has already been cleaned up
 	if _, ok := m.games[game]; !ok {
 		return
 	}
@@ -162,7 +159,7 @@ func (m *Manager) endGame(game *game.Game, reason EndReason, loser *Client) {
 	}
 
 	delete(m.games, game)
-	log.Printf("Game %s and its players have been cleaned up.", game.ID)
+	log.Printf("[WS] Game %s and its players have been cleaned up.", game.ID)
 }
 
 func createGameOverMessage(result string, winner, loser *Client) map[string]any {
@@ -184,7 +181,7 @@ func (m *Manager) findMatches() {
 		return
 	}
 
-	log.Println("Running matchmaking...")
+	log.Println("[WS] Running matchmaking...")
 	unmatched := make([]*Client, 0, len(m.waitlist))
 	matched := make(map[*Client]bool)
 
@@ -231,7 +228,7 @@ func (m *Manager) createGame(player1, player2 *Client) {
 	player1.playerID = 0
 	player2.playerID = 1
 
-	log.Printf("Pairing players (ELO %d vs %d) in game %s", player1.Elo, player2.Elo, newGame.ID)
+	log.Printf("[WS] Pairing players (ELO %d vs %d) in game %s", player1.Elo, player2.Elo, newGame.ID)
 
 	gameStartEvent := map[string]any{
 		"type": "game.start",
@@ -260,5 +257,5 @@ func (m *Manager) updateElo(winner, loser *Client) {
 	winner.Elo += eloChangeOnWinLoss
 	loser.Elo -= eloChangeOnWinLoss
 
-	log.Printf("ELO Change: Winner %d -> %d | Loser %d -> %d", winnerOldElo, winner.Elo, loserOldElo, loser.Elo)
+	log.Printf("[WS] ELO Change: Winner %d -> %d | Loser %d -> %d", winnerOldElo, winner.Elo, loserOldElo, loser.Elo)
 }

@@ -1,10 +1,11 @@
 package ws
 
 import (
-	"backend/game"
 	"encoding/json"
 	"fmt"
 	"log"
+
+	"backend/game"
 )
 
 type WormPlacement struct {
@@ -18,11 +19,11 @@ type WormPlacement struct {
 
 func (m *Manager) handleEvent(event *Event) {
 	if event.Client.game == nil {
-		log.Println("Received event from client not in a game")
+		log.Println("[ERROR] Received event from client not in a game")
 		return
 	}
 
-	log.Printf("Handling event '%s' for game '%s'", event.Type, event.Client.game.ID)
+	log.Printf("[GAME] Handling event '%s' for game '%s'", event.Type, event.Client.game.ID)
 
 	switch event.Type {
 	case "game.place_worms":
@@ -32,7 +33,7 @@ func (m *Manager) handleEvent(event *Event) {
 		m.handleFireShot(event)
 
 	default:
-		log.Printf("Unknown event type received: %s", event.Type)
+		log.Printf("[ERROR] Unknown event type received: %s", event.Type)
 	}
 }
 
@@ -53,7 +54,7 @@ func (m *Manager) handleWormPlacement(event *Event) {
 	playerState := client.game.PlayersStates[client.playerID]
 	playerState.Ready = true
 
-	log.Printf("Player %d in game %s has placed their worms.", client.playerID, client.game.ID)
+	log.Printf("[GAME] Player %d in game %s has placed their worms.", client.playerID, client.game.ID)
 
 	confirmEvent := map[string]any{"type": "game.placement_success"}
 	payload, _ := json.Marshal(confirmEvent)
@@ -63,7 +64,7 @@ func (m *Manager) handleWormPlacement(event *Event) {
 	opponentState := client.game.PlayersStates[opponentID]
 
 	if opponentState.Ready {
-		log.Printf("Both players in game %s are ready. Starting battle.", client.game.ID)
+		log.Printf("[GAME] Both players in game %s are ready. Starting battle.", client.game.ID)
 		client.game.State = game.StatePlayer2Turn
 
 		game.PrintBoard(playerState.Board, fmt.Sprintf("Player %d board", client.playerID))
