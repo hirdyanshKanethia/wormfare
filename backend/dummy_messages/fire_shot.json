@@ -1,0 +1,7 @@
+{
+ "type": "game.fire_shot",
+  "payload": {
+    "x": 4,
+    "y": 2
+  }
+}

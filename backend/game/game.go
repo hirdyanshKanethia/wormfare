@@ -14,6 +14,11 @@ const (
 	StateGameOver     GameState = "game_over"
 )
 
+type Coordinate struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
 type Player interface {
 	Send([]byte)
 	Disconnect()

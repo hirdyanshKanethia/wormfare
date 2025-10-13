@@ -13,6 +13,9 @@ func main() {
 	// Create a default Gin router
 	router := gin.Default()
 
+	// Trust only local requests in development
+	router.SetTrustedProxies([]string{"127.0.0.1"})
+
 	// Define the WebSocket route
 	router.GET("/ws", func(c *gin.Context) {
 		ws.ServeWs(manager, c)
