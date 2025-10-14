@@ -105,7 +105,7 @@ func (m *Manager) doValidWormPlacement(event *Event) bool {
 	}
 
 	for _, p := range placements {
-		if p.Orientation == "horizontal" && (p.X+armyMap[p.WormType].Length < game.BoardWidth) && p.X >= 0 && 0 <= p.Y && p.Y < game.BoardHeight {
+		if p.Orientation == "horizontal" && (p.X+armyMap[p.WormType].Length <= game.BoardWidth) && p.X >= 0 && 0 <= p.Y && p.Y <= game.BoardHeight {
 			for i := 0; i < armyMap[p.WormType].Length; i++ {
 				id := armyMap[p.WormType].ID
 				if board[p.Y][p.X+i] < 0 {
@@ -116,7 +116,7 @@ func (m *Manager) doValidWormPlacement(event *Event) bool {
 				armyMap[p.WormType].Positions = append(armyMap[p.WormType].Positions, game.Coordinate{X: p.X + i, Y: p.Y})
 				// log.Printf("Positions for current worm %s: %+v", p.WormType, armyMap[p.WormType].Positions)
 			}
-		} else if p.Orientation == "vertical" && (p.Y+armyMap[p.WormType].Length < game.BoardHeight) && p.Y >= 0 && 0 <= p.X && p.X < game.BoardWidth {
+		} else if p.Orientation == "vertical" && (p.Y+armyMap[p.WormType].Length <= game.BoardHeight) && p.Y >= 0 && 0 <= p.X && p.X <= game.BoardWidth {
 			for i := 0; i < armyMap[p.WormType].Length; i++ {
 				id := armyMap[p.WormType].ID
 				if board[p.Y+i][p.X] < 0 {
