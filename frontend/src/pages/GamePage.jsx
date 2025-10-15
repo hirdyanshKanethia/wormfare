@@ -1,6 +1,7 @@
 import React from "react";
 import { useGameStore } from "../store/gameStore";
 import PlacementUI from "../components/PlacementUI";
+import BattleUI from "../components/BattleUI";
 
 export default function GamePage() {
   const gamePhase = useGameStore((state) => state.gamePhase);
@@ -17,9 +18,15 @@ export default function GamePage() {
       case "placing_worms":
         return <PlacementUI />;
 
-      // 'playing' and 'game_over' phases will be added here later
-      // case 'playing':
-      //   return <BattleUI />;
+      case "waiting_for_opponent":
+        return (
+          <h1 className="text-4xl font-bold animate-pulse">
+            Waiting for opponent to place worms...
+          </h1>
+        );
+
+      case "playing":
+        return <BattleUI />;
 
       default:
         // Fallback for unexpected states

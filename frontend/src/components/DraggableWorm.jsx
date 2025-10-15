@@ -2,9 +2,12 @@ import React from "react";
 import { useDrag } from "react-dnd";
 import { useGameStore } from "../store/gameStore";
 
-// const CELL_SIZE_PX = 48;
-
-export default function DraggableWorm({ worm, placement, imageUrls }) {
+export default function DraggableWorm({
+  worm,
+  placement,
+  imageUrls,
+  isDraggable = true,
+}) {
   if (!worm) return null;
 
   const rotateWorm = useGameStore((state) => state.rotateWorm);
@@ -14,13 +17,14 @@ export default function DraggableWorm({ worm, placement, imageUrls }) {
     () => ({
       type: "worm",
       item: { ...worm, placement },
+      canDrag: isDraggable,
     }),
-    [worm, placement]
+    [worm, placement, isDraggable]
   );
 
   const handleWormClick = (e) => {
     e.stopPropagation();
-    if (placement) {
+    if (placement && isDraggable) {
       rotateWorm(worm.id);
     }
   };
@@ -29,17 +33,12 @@ export default function DraggableWorm({ worm, placement, imageUrls }) {
   const orientation = isPlaced ? placement.orientation : "vertical";
   const isHorizontal = orientation === "horizontal";
 
-  // This container's style handles the final position and dimensions on the grid.
   const containerStyle = {
     position: isPlaced ? "absolute" : "relative",
     top: isPlaced ? `${placement.y * cellSize}px` : undefined,
     left: isPlaced ? `${placement.x * cellSize}px` : undefined,
-    width: isHorizontal
-      ? `${worm.length * cellSize}px`
-      : `${cellSize}px`,
-    height: isHorizontal
-      ? `${cellSize}px`
-      : `${worm.length * cellSize}px`,
+    width: isHorizontal ? `${worm.length * cellSize}px` : `${cellSize}px`,
+    height: isHorizontal ? `${cellSize}px` : `${worm.length * cellSize}px`,
     zIndex: 10,
   };
 
@@ -47,15 +46,18 @@ export default function DraggableWorm({ worm, placement, imageUrls }) {
 
   return (
     <div
-      ref={drag}
+      ref={isDraggable ? drag : null}
       style={containerStyle}
       onClick={handleWormClick}
-      className={`cursor-move ${isDragging ? "opacity-50" : ""}`}
+      className={`${isDraggable ? "cursor-move" : "cursor-default"} ${
+        isDragging ? "opacity-50" : ""
+      }`}
     >
       <img
         src={imageUrl}
         alt={worm.name}
-        // **THE FIX**: All complex transform classes are GONE.
+        draggable="false"
+        // This is the final piece that adds the visual rotation back.
         className="w-full h-full object-cover rounded-md"
       />
     </div>

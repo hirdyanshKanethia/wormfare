@@ -15,6 +15,8 @@ const INITIAL_ARMY = [
 const initialState = {
   gamePhase: "lobby",
   playerID: null,
+  activeTurn: null, // will be 0 or 1
+  winner: null,
   army: [],
   placements: {},
   playerBoard: createEmptyBoard(),
@@ -29,6 +31,8 @@ export const useGameStore = create((set, get) => ({
 
   setCellSize: (size) => set({ cellSize: size }),
   findMatch: () => set({ gamePhase: "waiting" }),
+
+  setGamePhase: (phase) => set({ gamePhase: phase }),
 
   startGame: (payload) => {
     set({
@@ -214,8 +218,10 @@ export const useGameStore = create((set, get) => ({
    * Sends the final worm placements to the backend server.
    */
   confirmPlacements: () => {
-    const { placements } = get();
+    const { placements, playerBoard } = get();
     const sendMessage = useSocketStore.getState().sendMessage;
+
+    set({ playerBoard: playerBoard });
 
     const payload = Object.values(placements).map(({ wormId, ...rest }) => {
       return rest;
@@ -227,10 +233,62 @@ export const useGameStore = create((set, get) => ({
     });
 
     console.log(payload);
-    set({ gamePhase: "waiting_for_opponent" });
   },
 
   reset: () => {
     set(initialState);
+  },
+
+  battleStart: (payload) => {
+    set({
+      gamePhase: "playing",
+      activeTurn: payload.turn,
+    });
+  },
+
+  fireShot: (x, y) => {
+    const { activeTurn, playerID } = get();
+    if (activeTurn !== playerID) {
+      console.warn("Not your turn!");
+      return;
+    }
+
+    const { sendMessage } = useSocketStore.getState();
+    sendMessage({
+      type: "game.fire_shot",
+      payload: { x, y },
+    });
+  },
+
+  handleFireResult: (payload) => {
+    set((state) => {
+      const { x, y, result, actingPlayer } = payload;
+      // Determine which board to update
+      const boardToUpdate =
+        actingPlayer === state.playerID ? "opponentBoard" : "playerBoard";
+
+      const newBoard = state[boardToUpdate].map((row) => [...row]);
+
+      if (result === "miss") newBoard[y][x] = 1;
+      if (result === "hit") newBoard[y][x] = 2;
+      if (result === "killed") {
+        payload.worm.positions.forEach((pos) => {
+          newBoard[pos.y][pos.x] = 3; 
+        });
+      }
+
+      return { [boardToUpdate]: newBoard };
+    });
+  },
+
+  handleTurnUpdate: (payload) => {
+    set({ activeTurn: payload.turn });
+  },
+
+  handleGameOver: (payload) => {
+    set({
+      gamePhase: "game_over",
+      winner: payload.winner,
+    });
   },
 }));

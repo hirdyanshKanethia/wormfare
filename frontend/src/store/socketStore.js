@@ -25,13 +25,30 @@ export const useSocketStore = create((set, get) => ({
       const message = JSON.parse(event.data);
       console.log("Received:", message);
 
-      const { startGame } = useGameStore.getState();
+      const { startGame, setGamePhase, battleStart, handleFireResult, handleTurnUpdate, handleGameOver } = useGameStore.getState();
 
       switch (message.type) {
         case "game.start":
           startGame(message.payload);
           break;
-        // Other message types (like fire_result, game_over) will be handled here
+
+        case "game.placement_success":
+          setGamePhase("waiting_for_opponent");
+          break;
+
+        case "game.battle_start":
+          battleStart(message.payload);
+          break;
+
+        case "game.fire_result":
+          handleFireResult(message.payload);
+          break;
+        case "game.turn_update":
+          handleTurnUpdate(message.payload);
+          break;
+        case "game_over":
+          handleGameOver(message.payload);
+          break;
       }
     };
 

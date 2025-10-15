@@ -156,13 +156,15 @@ func (m *Manager) handleFireShot(event *Event) {
 	opponentState := event.Client.game.PlayersStates[opponentID]
 	board := opponentState.Board
 
-	resultPayload := map[string]any{
-		"actingPlayer": client.playerID,
-	}
-
 	if err := json.Unmarshal(event.Payload, &cellShot); err != nil {
 		log.Printf("[ERROR] %v", err)
 		m.endGame(event.Client.game, ReasonDraw, nil)
+	}
+
+	resultPayload := map[string]any{
+		"actingPlayer": client.playerID,
+		"x":            cellShot.X,
+		"y":            cellShot.Y,
 	}
 
 	// check for out of bounds coordinates of cell
@@ -213,7 +215,7 @@ func (m *Manager) handleFireShot(event *Event) {
 		}
 	}
 
-	fireResultMsg, _ := json.Marshal(map[string]any{"type": "fire_result", "payload": resultPayload})
+	fireResultMsg, _ := json.Marshal(map[string]any{"type": "game.fire_result", "payload": resultPayload})
 	for _, p := range client.game.Players {
 		p.Send(fireResultMsg)
 	}
@@ -235,7 +237,7 @@ func (m *Manager) handleFireShot(event *Event) {
 	} else {
 		turnPlayerID = 1
 	}
-	turnUpdateMsg, _ := json.Marshal(map[string]any{"type": "turn_update", "payload": map[string]any{"turn": turnPlayerID}})
+	turnUpdateMsg, _ := json.Marshal(map[string]any{"type": "game.turn_update", "payload": map[string]any{"turn": turnPlayerID}})
 	for _, p := range client.game.Players {
 		p.Send(turnUpdateMsg)
 	}

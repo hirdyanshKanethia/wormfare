@@ -3,7 +3,7 @@ import React, { useRef, useLayoutEffect } from "react";
 import Cell from "./Cell";
 import { useGameStore } from "../store/gameStore"; // Import the store
 
-export default function Board({ boardData, colorMap, isPlayerBoard }) {
+export default function Board({ boardData, colorMap, isPlayerBoard, isInteractive }) {
   const ref = useRef(null);
   const setCellSize = useGameStore((state) => state.setCellSize);
 
@@ -43,6 +43,7 @@ export default function Board({ boardData, colorMap, isPlayerBoard }) {
             cellState={cellState}
             color={colorMap[cellState] || "bg-transparent"}
             isPlayerBoard={isPlayerBoard}
+            isInteractive={isInteractive}
           />
         ))
       )}
