@@ -142,12 +142,14 @@ func (m *Manager) handleFireShot(event *Event) {
 	if state := client.game.State; state != game.StatePlayer1Turn && state != game.StatePlayer2Turn {
 		log.Printf("[ERROR] '%v' received at invalid state %v", state, event.Type)
 		m.endGame(event.Client.game, ReasonDraw, nil)
+		return
 	}
 
 	// check for player turn is valid
 	if (client.game.State == game.StatePlayer1Turn && client.playerID != 0) || (client.game.State == game.StatePlayer2Turn && client.playerID != 1) {
 		log.Printf("[ERROR] Invalid player sent the '%v' event. Game ending in a draw.", event.Type)
 		m.endGame(event.Client.game, ReasonDraw, nil)
+		return
 	}
 
 	// variable and object declarations
@@ -159,6 +161,7 @@ func (m *Manager) handleFireShot(event *Event) {
 	if err := json.Unmarshal(event.Payload, &cellShot); err != nil {
 		log.Printf("[ERROR] %v", err)
 		m.endGame(event.Client.game, ReasonDraw, nil)
+		return
 	}
 
 	resultPayload := map[string]any{
@@ -171,11 +174,13 @@ func (m *Manager) handleFireShot(event *Event) {
 	if cellShot.X < 0 || cellShot.Y < 0 || cellShot.X > 7 || cellShot.Y > 7 {
 		log.Printf("[ERROR] Invalid cell coordinates received for '%v'. X: %d, Y: %d", event.Type, cellShot.X, cellShot.Y)
 		m.endGame(event.Client.game, ReasonDraw, nil)
+		return
 	}
 
 	if board[cellShot.Y][cellShot.X] > 0 {
 		log.Printf("[ERROR] Invalid cell coordinates received for '%v' from '%v'", event.Type, client.playerID)
 		m.endGame(event.Client.game, ReasonDraw, nil)
+		return
 	}
 
 	armyIDMap := make(map[int]*game.Worm)
@@ -204,9 +209,11 @@ func (m *Manager) handleFireShot(event *Event) {
 				if opponent, ok := event.Client.game.Players[opponentID].(*Client); ok {
 					log.Printf("[GAME] Opponent found: Player %d", opponent.playerID)
 					m.endGame(event.Client.game, ReasonWinLoss, opponent)
+					return
 				} else {
 					log.Printf("[ERROR] Could not find opponent client. Ending game in a draw")
 					m.endGame(client.game, ReasonDraw, nil)
+					return
 				}
 			}
 		} else {
@@ -229,6 +236,7 @@ func (m *Manager) handleFireShot(event *Event) {
 	default:
 		log.Printf("[ERROR] Unexpected error occured. Ending game in a draw!")
 		m.endGame(client.game, ReasonDraw, nil)
+		return
 	}
 
 	var turnPlayerID int

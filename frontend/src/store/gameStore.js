@@ -273,7 +273,7 @@ export const useGameStore = create((set, get) => ({
       if (result === "hit") newBoard[y][x] = 2;
       if (result === "killed") {
         payload.worm.positions.forEach((pos) => {
-          newBoard[pos.y][pos.x] = 3; 
+          newBoard[pos.y][pos.x] = 3;
         });
       }
 
@@ -290,5 +290,9 @@ export const useGameStore = create((set, get) => ({
       gamePhase: "game_over",
       winner: payload.winner,
     });
+  },
+
+  reset: () => {
+    set(initialState);
   },
 }));

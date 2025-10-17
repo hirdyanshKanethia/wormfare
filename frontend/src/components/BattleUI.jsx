@@ -39,7 +39,7 @@ export default function BattleUI() {
     useGameStore();
 
   const isMyTurn = playerID === activeTurn;
-  console.log(isMyTurn)
+  // console.log(isMyTurn)
 
   return (
     <div className="flex flex-col items-center w-full">

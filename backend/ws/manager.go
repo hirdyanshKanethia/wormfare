@@ -84,7 +84,7 @@ func (m *Manager) registerClient(client *Client) {
 	client.JoinedWaitlistAt = time.Now()
 	m.waitlist = append(m.waitlist, client)
 
-	log.Printf("[WS] Client connected and added to waitlist. Wailist size: %d", len(m.waitlist))
+	log.Printf("[WS] Client connected and added to waitlist. Wait list size: %d", len(m.waitlist))
 
 	waitEvent := map[string]any{
 		"type":    "game.wait",
@@ -149,7 +149,7 @@ func (m *Manager) endGame(game *game.Game, reason EndReason, loser *Client) {
 		for _, p := range game.Players {
 			if p != nil {
 				p.Send(payload)
-				time.AfterFunc(100*time.Millisecond, p.Disconnect)
+				// time.AfterFunc(100*time.Millisecond, p.Disconnect)
 
 				if c, ok := p.(*Client); ok {
 					delete(m.clients, c)

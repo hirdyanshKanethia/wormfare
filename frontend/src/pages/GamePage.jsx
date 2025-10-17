@@ -2,6 +2,7 @@ import React from "react";
 import { useGameStore } from "../store/gameStore";
 import PlacementUI from "../components/PlacementUI";
 import BattleUI from "../components/BattleUI";
+import GameOverUI from "../components/GameOverUI";
 
 export default function GamePage() {
   const gamePhase = useGameStore((state) => state.gamePhase);
@@ -27,6 +28,9 @@ export default function GamePage() {
 
       case "playing":
         return <BattleUI />;
+
+      case "game_over":
+        return <GameOverUI />;
 
       default:
         // Fallback for unexpected states
