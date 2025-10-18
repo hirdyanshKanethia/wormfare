@@ -1,13 +1,16 @@
 package ws
 
 import (
-	"backend/game"
 	"encoding/json"
 	"log"
 	"math"
 	"math/rand"
 	"sync"
 	"time"
+
+	"backend/game"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type EndReason int
@@ -34,10 +37,11 @@ type Manager struct {
 	register     chan *Client // input channel for register signal
 	unregister   chan *Client // input channel for unregister signal
 	route        chan *Event  // channel for incoming events
+	dbpool       *pgxpool.Pool
 }
 
 // NewManager creates and starts a new manager.
-func NewManager() *Manager {
+func NewManager(dbpool *pgxpool.Pool) *Manager {
 	m := &Manager{
 		clients:    make(map[*Client]bool),
 		games:      make(map[*game.Game]bool),
@@ -45,6 +49,7 @@ func NewManager() *Manager {
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		route:      make(chan *Event),
+		dbpool:     dbpool,
 	}
 	go m.run()
 	return m

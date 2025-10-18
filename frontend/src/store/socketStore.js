@@ -13,7 +13,11 @@ export const useSocketStore = create((set, get) => ({
       import.meta.env.VITE_WEBSOCKET_URL || "ws://localhost:8080/ws";
     const socket = new WebSocket(socketURL);
 
-    socket.onopen = () => set({ connectionStatus: "connected" });
+    socket.onopen = () => {
+      set({ connectionStatus: "connected" });
+      get().sendMessage({ type: "auth", payload: { token } });
+    };
+
     socket.onclose = () => {
       set({ socket: null, connectionStatus: "disconnected" });
       // Reset game state on disconnect
@@ -25,7 +29,14 @@ export const useSocketStore = create((set, get) => ({
       const message = JSON.parse(event.data);
       console.log("Received:", message);
 
-      const { startGame, setGamePhase, battleStart, handleFireResult, handleTurnUpdate, handleGameOver } = useGameStore.getState();
+      const {
+        startGame,
+        setGamePhase,
+        battleStart,
+        handleFireResult,
+        handleTurnUpdate,
+        handleGameOver,
+      } = useGameStore.getState();
 
       switch (message.type) {
         case "game.start":

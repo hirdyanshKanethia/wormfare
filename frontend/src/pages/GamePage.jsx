@@ -1,11 +1,21 @@
 import React from "react";
 import { useGameStore } from "../store/gameStore";
+import { useSocketStore } from "../store/socketStore";
 import PlacementUI from "../components/PlacementUI";
 import BattleUI from "../components/BattleUI";
 import GameOverUI from "../components/GameOverUI";
 
 export default function GamePage() {
   const gamePhase = useGameStore((state) => state.gamePhase);
+  const connectionStatus = useSocketStore((state) => state.connectionStatus);
+
+  if (connectionStatus !== "connected") {
+    return (
+      <div className="bg-gray-800 min-h-screen flex items-center justify-center text-white">
+        <h1 className="text-3xl animate-pulse">Connecting to game server...</h1>
+      </div>
+    );
+  }
 
   const renderContent = () => {
     switch (gamePhase) {
@@ -34,7 +44,7 @@ export default function GamePage() {
 
       default:
         // Fallback for unexpected states
-        return <h1 className="text-4xl font-bold">Returning to Lobby...</h1>;
+        return <h1 className="text-4xl font-bold">Loading Game...</h1>;
     }
   };
 

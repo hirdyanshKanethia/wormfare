@@ -1,11 +1,12 @@
 package ws
 
 import (
-	"backend/game"
 	"encoding/json"
 	"log"
 	"sync"
 	"time"
+
+	"backend/game"
 
 	"github.com/gorilla/websocket"
 )
@@ -20,6 +21,13 @@ type Client struct {
 	once             sync.Once
 	Elo              int       `json:"elo"`
 	JoinedWaitlistAt time.Time `json:"-"`
+	authenticated    bool
+	elo              int
+	userID           string
+}
+
+func (c *Client) IsAuthenticated() bool {
+	return c.authenticated
 }
 
 // readPump pumps messages from the WebSocket connection to the manager.

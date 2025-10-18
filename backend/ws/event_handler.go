@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"time"
 
+	"backend/auth"
 	"backend/game"
 )
 
@@ -18,12 +21,55 @@ type WormPlacement struct {
 // ---------- MAIN HANLDER ----------
 
 func (m *Manager) handleEvent(event *Event) {
-	if event.Client.game == nil {
-		log.Println("[ERROR] Received event from client not in a game")
+	client := event.Client
+
+	// --- Authentication Check ---
+	if !client.IsAuthenticated() {
+		if event.Type == "auth" {
+			var authData auth.AuthPayload
+
+			if err := json.Unmarshal(event.Payload, &authData); err != nil {
+				log.Printf("Invalid auth payload format from client: %v", err)
+				client.Disconnect()
+				return
+			}
+
+			userData, err := auth.ValidateTokenAndFetchUser(authData.Token, m.dbpool, os.Getenv("SUPABASE_JWT_SECRET"))
+			if err != nil {
+				log.Printf("Authentication failed for client: %v", err)
+				errMsg := map[string]string{"type": "auth_error", "payload": err.Error()}
+				payload, _ := json.Marshal(errMsg)
+				client.Send(payload)
+				time.AfterFunc(100*time.Millisecond, client.Disconnect)
+			} else {
+				client.userID = userData.UserID
+				client.elo = userData.Elo
+				client.authenticated = true
+
+				log.Printf("Client authenticated successfully. UserID: %s, ELO: %d", client.userID, client.elo)
+				successMsg := map[string]string{"type": "auth_success", "payload": "Authentication successful"}
+				payload, _ := json.Marshal(successMsg)
+				client.Send(payload)
+
+				m.registerClient(client)
+			}
+		} else {
+			log.Printf("Received non-auth message type '%s' from unauthenticated client. Disconnecting.", event.Type)
+			errMsg := map[string]string{"type": "auth_error", "payload": "Authentication required"}
+			payload, _ := json.Marshal(errMsg)
+			client.Send(payload)
+			time.AfterFunc(100*time.Millisecond, client.Disconnect)
+		}
 		return
 	}
 
-	log.Printf("[GAME] Handling event '%s' for game '%s'", event.Type, event.Client.game.ID)
+	// --- Authenticated Logic ---
+	if client.game == nil {
+		log.Printf("Received event '%s' from authenticated client not in a game.", event.Type)
+		return
+	}
+
+	log.Printf("Handling event '%s' for game '%s'", event.Type, client.game.ID)
 
 	switch event.Type {
 	case "game.place_worms":
