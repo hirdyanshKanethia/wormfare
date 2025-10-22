@@ -5,8 +5,8 @@ export const useSocketStore = create((set, get) => ({
   socket: null,
   connectionStatus: "disconnected",
 
-  connect: () => {
-    if (get().socket) return;
+  connect: (token) => {
+    if (get().socket || !token) return; // Prevent connecting without a token
     set({ connectionStatus: "connecting" });
 
     const socketURL =
@@ -15,6 +15,9 @@ export const useSocketStore = create((set, get) => ({
 
     socket.onopen = () => {
       set({ connectionStatus: "connected" });
+      console.log("WebSocket connected. Sending auth token...");
+
+      // **SEND AUTH MESSAGE HERE**: Immediately after connection opens.
       get().sendMessage({ type: "auth", payload: { token } });
     };
 

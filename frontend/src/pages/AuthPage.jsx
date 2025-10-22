@@ -5,6 +5,7 @@ export default function AuthPage() {
   const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState(""); // Add state for username
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -17,9 +18,9 @@ export default function AuthPage() {
     try {
       if (isLoginView) {
         await login(email, password);
-        // On successful login, the onAuthStateChange listener will redirect.
       } else {
-        await signUp(email, password);
+        // **THE FIX**: Pass username to signUp
+        await signUp(email, password, username);
         setMessage("Success! Please check your email for a confirmation link.");
       }
     } catch (err) {
@@ -37,6 +38,17 @@ export default function AuthPage() {
         onSubmit={handleSubmit}
         className="flex flex-col gap-4 w-full max-w-sm"
       >
+        {/* **THE FIX**: Conditionally render the username input */}
+        {!isLoginView && (
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="p-3 bg-gray-700 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+            required
+          />
+        )}
         <input
           type="email"
           placeholder="Email"
@@ -47,7 +59,7 @@ export default function AuthPage() {
         />
         <input
           type="password"
-          placeholder="Password"
+          placeholder="Password (min 6 chars)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="p-3 bg-gray-700 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -65,7 +77,11 @@ export default function AuthPage() {
       {message && <p className="mt-4 text-green-400">{message}</p>}
 
       <button
-        onClick={() => setIsLoginView(!isLoginView)}
+        onClick={() => {
+          setIsLoginView(!isLoginView);
+          setError(""); // Clear errors when switching views
+          setMessage("");
+        }}
         className="mt-6 text-gray-400 hover:text-white"
       >
         {isLoginView

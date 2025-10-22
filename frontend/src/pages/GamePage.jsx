@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useGameStore } from "../store/gameStore";
 import { useSocketStore } from "../store/socketStore";
 import PlacementUI from "../components/PlacementUI";
@@ -8,6 +9,15 @@ import GameOverUI from "../components/GameOverUI";
 export default function GamePage() {
   const gamePhase = useGameStore((state) => state.gamePhase);
   const connectionStatus = useSocketStore((state) => state.connectionStatus);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // If the connection drops, redirect back to the lobby.
+    if (connectionStatus === "disconnected") {
+      console.log("WebSocket disconnected, redirecting to lobby...");
+      navigate("/lobby", { replace: true });
+    }
+  }, [connectionStatus, navigate]);
 
   if (connectionStatus !== "connected") {
     return (

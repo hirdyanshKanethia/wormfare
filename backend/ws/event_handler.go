@@ -21,6 +21,18 @@ type WormPlacement struct {
 // ---------- MAIN HANLDER ----------
 
 func (m *Manager) handleEvent(event *Event) {
+	// defer function to prevent panic shutdown
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("CRITICAL: Recovered from panic in handleEvent: %v", r)
+			// If the client who caused the panic was in a game, end it safely.
+			if event.Client.game != nil {
+				log.Printf("Ending game %s due to panic.", event.Client.game.ID)
+				m.endGame(event.Client.game, ReasonDraw, nil)
+			}
+		}
+	}()
+
 	client := event.Client
 
 	// --- Authentication Check ---
@@ -54,11 +66,17 @@ func (m *Manager) handleEvent(event *Event) {
 				m.registerClient(client)
 			}
 		} else {
-			log.Printf("Received non-auth message type '%s' from unauthenticated client. Disconnecting.", event.Type)
-			errMsg := map[string]string{"type": "auth_error", "payload": "Authentication required"}
-			payload, _ := json.Marshal(errMsg)
-			client.Send(payload)
-			time.AfterFunc(100*time.Millisecond, client.Disconnect)
+			log.Printf("Received non-auth message type '%s' from unauthenticated client.", event.Type)
+			if client.game != nil {
+				log.Printf("Ending game %s in a draw due to authentication error.", client.game.ID)
+				m.endGame(client.game, ReasonDraw, nil)
+			} else {
+				// If not in a game, just disconnect them.
+				errMsg := map[string]string{"type": "auth_error", "payload": "Authentication required"}
+				payload, _ := json.Marshal(errMsg)
+				client.Send(payload)
+				time.AfterFunc(100*time.Millisecond, client.Disconnect)
+			}
 		}
 		return
 	}
