@@ -32,6 +32,7 @@ const (
 type Manager struct {
 	sync.RWMutex // Used to manage read and write locks for concurrency without errors
 	clients      map[*Client]bool
+	activeUsers  map[string]*Client  // Active users map to keep track of unique clients connected by their IDs
 	games        map[*game.Game]bool // A set of active games
 	waitlist     []*Client
 	register     chan *Client // input channel for register signal
@@ -43,13 +44,14 @@ type Manager struct {
 // NewManager creates and starts a new manager.
 func NewManager(dbpool *pgxpool.Pool) *Manager {
 	m := &Manager{
-		clients:    make(map[*Client]bool),
-		games:      make(map[*game.Game]bool),
-		waitlist:   make([]*Client, 0),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		route:      make(chan *Event),
-		dbpool:     dbpool,
+		clients:     make(map[*Client]bool),
+		activeUsers: make(map[string]*Client),
+		games:       make(map[*game.Game]bool),
+		waitlist:    make([]*Client, 0),
+		register:    make(chan *Client),
+		unregister:  make(chan *Client),
+		route:       make(chan *Event),
+		dbpool:      dbpool,
 	}
 	go m.run()
 	return m
@@ -101,19 +103,30 @@ func (m *Manager) registerClient(client *Client) {
 
 // unregisterClient -> handles game cleanup and result for cases like undefined disconnection of client
 func (m *Manager) unregisterClient(client *Client) {
-	// If client disconnected during waiting, just cleanup and return
+	m.Lock()         // Lock for modifying shared maps
+	defer m.Unlock() // Ensure unlock happens
+
+	if client.IsAuthenticated() && client.userID != "" {
+		delete(m.activeUsers, client.userID)
+		log.Printf("[WS] Client removed from active clients list.")
+	}
+
+	delete(m.clients, client)
+
+	// Check if the client was on the waitlist
 	for i, waitingClient := range m.waitlist {
 		if waitingClient == client {
 			m.waitlist = append(m.waitlist[:i], m.waitlist[i+1:]...)
 			log.Printf("[WS] Client removed from waitlist.")
-			delete(m.clients, client)
 			return
 		}
 	}
 
-	// if client disconnected during a game, cleanup the game for the client as the loser
-	if game := client.game; game != nil {
-		m.endGame(game, ReasonWinLoss, client)
+	// If they weren't on the waitlist, they might have been in a game.
+	if gameObj := client.game; gameObj != nil {
+		if _, ok := m.games[gameObj]; ok {
+			m.endGame(gameObj, ReasonWinLoss, client)
+		}
 	}
 }
 

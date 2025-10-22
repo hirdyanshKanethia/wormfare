@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-contrib/cors" // Import CORS middleware
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -19,26 +20,38 @@ import (
 func main() {
 	// --- Setup ---
 	godotenv.Load()
-	dbpool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
+
+	configDB, err := pgxpool.ParseConfig(os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatalf("Unable to parse database URL: %v\n", err)
+	}
+
+	// **THIS IS THE FIX**: Disable prepared statement caching.
+	// Use simple protocol when talking to external poolers like PgBouncer.
+	configDB.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+
+	// 2. Create the pool using the modified config.
+	dbpool, err := pgxpool.NewWithConfig(context.Background(), configDB)
 	if err != nil {
 		log.Fatalf("Unable to create connection pool: %v\n", err)
 	}
 	defer dbpool.Close()
-	log.Println("Successfully connected to database.")
+
+	log.Println("Successfully connected to database (using simple protocol).")
 
 	manager := ws.NewManager(dbpool)
 	router := gin.Default()
 
 	// --- CORS Middleware ---
-	config := cors.DefaultConfig()
+	configCORS := cors.DefaultConfig()
 	frontendURL := os.Getenv("FRONTEND_URL")
 	if frontendURL == "" {
 		frontendURL = "http://localhost:5173" // Default for local dev
 	}
-	config.AllowOrigins = []string{frontendURL}
-	config.AllowMethods = []string{"GET", "POST"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
-	router.Use(cors.New(config))
+	configCORS.AllowOrigins = []string{frontendURL}
+	configCORS.AllowMethods = []string{"GET", "POST"}
+	configCORS.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
+	router.Use(cors.New(configCORS))
 
 	// --- WebSocket Route ---
 	router.GET("/game/ws", func(c *gin.Context) {
