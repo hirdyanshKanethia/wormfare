@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"math"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -30,15 +29,15 @@ const (
 
 // Manager is the central hub that manages all clients and game sessions.
 type Manager struct {
-	sync.RWMutex // Used to manage read and write locks for concurrency without errors
-	clients      map[*Client]bool
+	sync.RWMutex                     // Used to manage read and write locks for concurrency without errors
+	clients      map[*Client]bool    // Client objects of client
 	activeUsers  map[string]*Client  // Active users map to keep track of unique clients connected by their IDs
 	games        map[*game.Game]bool // A set of active games
-	waitlist     []*Client
-	register     chan *Client // input channel for register signal
-	unregister   chan *Client // input channel for unregister signal
-	route        chan *Event  // channel for incoming events
-	dbpool       *pgxpool.Pool
+	waitlist     []*Client           // List of clients waiting for matchmaking
+	register     chan *Client        // input channel for register signal
+	unregister   chan *Client        // input channel for unregister signal
+	route        chan *Event         // channel for incoming events
+	dbpool       *pgxpool.Pool       // database pool
 }
 
 // NewManager creates and starts a new manager.
@@ -85,20 +84,7 @@ func (m *Manager) registerClient(client *Client) {
 	defer m.Unlock()
 
 	m.clients[client] = true
-
-	// Testing specific values
-	client.Elo = 1200 + rand.Intn(200) - 100
-	client.JoinedWaitlistAt = time.Now()
-	m.waitlist = append(m.waitlist, client)
-
-	log.Printf("[WS] Client connected and added to waitlist. Wait list size: %d", len(m.waitlist))
-
-	waitEvent := map[string]any{
-		"type":    "game.wait",
-		"payload": map[string]any{"elo": client.Elo},
-	}
-	payload, _ := json.Marshal(waitEvent)
-	client.egress <- payload
+	log.Printf("[WS] Client connected. Waiting for authentication.")
 }
 
 // unregisterClient -> handles game cleanup and result for cases like undefined disconnection of client

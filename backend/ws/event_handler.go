@@ -37,61 +37,7 @@ func (m *Manager) handleEvent(event *Event) {
 
 	// --- Authentication Check ---
 	if !client.IsAuthenticated() {
-		if event.Type == "auth" {
-			var authData auth.AuthPayload
-
-			if err := json.Unmarshal(event.Payload, &authData); err != nil {
-				log.Printf("Invalid auth payload format from client: %v", err)
-				client.Disconnect()
-				return
-			}
-
-			userData, err := auth.ValidateTokenAndFetchUser(authData.Token, m.dbpool, os.Getenv("SUPABASE_JWT_SECRET"))
-			if err != nil {
-				log.Printf("Authentication failed for client: %v", err)
-				errMsg := map[string]string{"type": "auth_error", "payload": err.Error()}
-				payload, _ := json.Marshal(errMsg)
-				client.Send(payload)
-				time.AfterFunc(100*time.Millisecond, client.Disconnect)
-			} else {
-				// --- **DUPLICATE CONNECTION CHECK** ---
-				m.Lock()
-				_, alreadyConnected := m.activeUsers[userData.UserID]
-				if alreadyConnected {
-					m.Unlock()
-					log.Printf("[WS] Duplicate connection attempt rejected for UserID: %s", userData.UserID)
-					errMsg := map[string]string{"type": "auth_error", "payload": "Account already connected"}
-					payload, _ := json.Marshal(errMsg)
-					client.Send(payload)
-					time.AfterFunc(100*time.Millisecond, client.Disconnect)
-					return
-				}
-				client.userID = userData.UserID
-				client.elo = userData.Elo
-				client.authenticated = true
-				m.activeUsers[client.userID] = client
-				m.Unlock()
-
-				log.Printf("Client authenticated successfully. UserID: %s, ELO: %d", client.userID, client.elo)
-				successMsg := map[string]string{"type": "auth_success", "payload": "Authentication successful"}
-				payload, _ := json.Marshal(successMsg)
-				client.Send(payload)
-
-				// m.registerClient(client)
-			}
-		} else {
-			log.Printf("Received non-auth message type '%s' from unauthenticated client.", event.Type)
-			if client.game != nil {
-				log.Printf("Ending game %s in a draw due to authentication error.", client.game.ID)
-				m.endGame(client.game, ReasonDraw, nil)
-			} else {
-				// If not in a game, just disconnect them.
-				errMsg := map[string]string{"type": "auth_error", "payload": "Authentication required"}
-				payload, _ := json.Marshal(errMsg)
-				client.Send(payload)
-				time.AfterFunc(100*time.Millisecond, client.Disconnect)
-			}
-		}
+		m.handleAuthentication(event)
 		return
 	}
 
@@ -338,4 +284,74 @@ func (m *Manager) isArmyDead(army []*game.Worm) bool {
 		}
 	}
 	return true
+}
+
+// Authentication function to handle the auth event
+func (m *Manager) handleAuthentication(event *Event) {
+	client := event.Client
+
+	if event.Type == "auth" {
+		var authData auth.AuthPayload
+		if err := json.Unmarshal(event.Payload, &authData); err != nil {
+			log.Printf("[ERROR] Invalid auth payload format from client: %v", err)
+			client.Disconnect()
+			return
+		}
+
+		userData, err := auth.ValidateTokenAndFetchUser(authData.Token, m.dbpool, os.Getenv("SUPABASE_JWT_SECRET"))
+		if err != nil {
+			log.Printf("[AUTH] Authentication failed for client: %v", err)
+			errMsg := map[string]string{"type": "auth_error", "payload": err.Error()}
+			payload, _ := json.Marshal(errMsg)
+			client.Send(payload)
+			time.AfterFunc(100*time.Millisecond, client.Disconnect)
+			return
+		}
+
+		// --- Authentication Successful ---
+		m.Lock() // Lock manager for checks and updates
+
+		_, alreadyConnected := m.activeUsers[userData.UserID]
+		if alreadyConnected {
+			m.Unlock()
+			log.Printf("[WS] Duplicate connection attempt rejected for UserID: %s", userData.UserID)
+			errMsg := map[string]string{"type": "auth_error", "payload": "Account already connected"}
+			payload, _ := json.Marshal(errMsg)
+			client.Send(payload)
+			time.AfterFunc(100*time.Millisecond, client.Disconnect)
+			return
+		}
+
+		client.userID = userData.UserID
+		client.elo = userData.Elo
+		client.authenticated = true
+		m.activeUsers[client.userID] = client
+
+		// Add the fully authenticated client to the waitlist
+		client.JoinedWaitlistAt = time.Now()
+		m.waitlist = append(m.waitlist, client)
+
+		m.Unlock()
+
+		log.Printf("[WS] Client authenticated and added to waitlist. UserID: %s, ELO: %d. Waitlist size: %d", client.userID, client.elo, len(m.waitlist))
+
+		// Send auth success message
+		successMsg := map[string]string{"type": "auth_success", "payload": "Authentication successful"}
+		payloadSuccess, _ := json.Marshal(successMsg)
+		client.Send(payloadSuccess)
+
+		// Send game.wait message
+		waitEvent := map[string]any{"type": "game.wait", "payload": map[string]any{"elo": client.elo}}
+		payloadWait, _ := json.Marshal(waitEvent)
+		client.Send(payloadWait)
+
+	} else {
+		// Received a non-auth message from an unauthenticated client
+		log.Printf("[ERROR] Received non-auth message type '%s' from unauthenticated client. Disconnecting.", event.Type)
+		errMsg := map[string]string{"type": "auth_error", "payload": "Authentication required"}
+		payload, _ := json.Marshal(errMsg)
+		client.Send(payload)
+		time.AfterFunc(100*time.Millisecond, client.Disconnect)
+		// No need to check client.game here, as they aren't authenticated yet
+	}
 }
