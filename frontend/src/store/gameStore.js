@@ -17,6 +17,7 @@ const initialState = {
   playerID: null,
   activeTurn: null, // will be 0 or 1
   winner: null,
+  gameResult: null, // "win", "lose", or "draw"
   army: [],
   placements: {},
   playerBoard: createEmptyBoard(),
@@ -289,6 +290,7 @@ export const useGameStore = create((set, get) => ({
     set({
       gamePhase: "game_over",
       winner: payload.winner,
+      gameResult: payload.result,
     });
   },
 

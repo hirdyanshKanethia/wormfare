@@ -111,16 +111,26 @@ func (m *Manager) unregisterClient(client *Client) {
 	// If they weren't on the waitlist, they might have been in a game.
 	if gameObj := client.game; gameObj != nil {
 		if _, ok := m.games[gameObj]; ok {
-			m.endGame(gameObj, ReasonWinLoss, client)
+			// **THE FIX**: If one client disconnects during the placement phase, the game is a draw.
+			reason := ReasonWinLoss
+			if gameObj.State == game.StatePlacingWorms {
+				log.Printf("[WS] Client disconnected during placement. Ending game %s in a draw.", gameObj.ID)
+				reason = ReasonDraw
+			}
+			m.endGameLocked(gameObj, reason, client)
 		}
 	}
 }
 
-// endGame -> Ends the game for cases that end the game cleanly (eg. win/loss)
+// endGame -> Ends the game and handles locking.
 func (m *Manager) endGame(game *game.Game, reason EndReason, loser *Client) {
 	m.Lock()
 	defer m.Unlock()
+	m.endGameLocked(game, reason, loser)
+}
 
+// endGameLocked -> Internal implementation of endGame that assumes the manager is already locked.
+func (m *Manager) endGameLocked(game *game.Game, reason EndReason, loser *Client) {
 	if _, ok := m.games[game]; !ok {
 		return
 	}

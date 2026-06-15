@@ -5,12 +5,20 @@ import { useSocketStore } from "../store/socketStore";
 
 export default function GameOverUI() {
   const navigate = useNavigate();
-  const { winner, playerID, reset } = useGameStore();
+  const { winner, playerID, gameResult, reset } = useGameStore();
   const disconnect = useSocketStore((state) => state.disconnect);
 
-  const isWinner = playerID === winner;
-  const resultText = isWinner ? "You Win!" : "You Lose!";
-  const resultColor = isWinner ? "text-green-400" : "text-red-500";
+  let resultText = "";
+  let resultColor = "";
+
+  if (gameResult === "draw") {
+    resultText = "It's a Draw!";
+    resultColor = "text-yellow-400";
+  } else {
+    const isWinner = playerID === winner;
+    resultText = isWinner ? "You Win!" : "You Lose!";
+    resultColor = isWinner ? "text-green-400" : "text-red-500";
+  }
 
   const handleReturnToLobby = () => {
     reset(); // Reset the game state
