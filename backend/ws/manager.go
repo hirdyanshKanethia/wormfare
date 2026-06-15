@@ -1,15 +1,15 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"math"
 	"sync"
 	"time"
 
+	"backend/db"
 	"backend/game"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type EndReason int
@@ -37,11 +37,11 @@ type Manager struct {
 	register     chan *Client        // input channel for register signal
 	unregister   chan *Client        // input channel for unregister signal
 	route        chan *Event         // channel for incoming events
-	dbpool       *pgxpool.Pool       // database pool
+	db           *db.PrismaClient    // Prisma database client
 }
 
 // NewManager creates and starts a new manager.
-func NewManager(dbpool *pgxpool.Pool) *Manager {
+func NewManager(client *db.PrismaClient) *Manager {
 	m := &Manager{
 		clients:     make(map[*Client]bool),
 		activeUsers: make(map[string]*Client),
@@ -50,7 +50,7 @@ func NewManager(dbpool *pgxpool.Pool) *Manager {
 		register:    make(chan *Client),
 		unregister:  make(chan *Client),
 		route:       make(chan *Event),
-		dbpool:      dbpool,
+		db:          client,
 	}
 	go m.run()
 	return m
@@ -252,14 +252,35 @@ func (m *Manager) createGame(player1, player2 *Client) {
 	player2.egress <- p2Payload
 }
 
-// updateElo -> Updates elo in the DB
+// updateElo -> Updates elo in the DB using Prisma
 func (m *Manager) updateElo(winner, loser *Client) {
-	// TODO: Implement database update logic here.
-
 	winnerOldElo := winner.Elo
 	loserOldElo := loser.Elo
+
 	winner.Elo += eloChangeOnWinLoss
 	loser.Elo -= eloChangeOnWinLoss
+
+	// Update in Database asynchronously to not block the manager
+	go func() {
+		ctx := context.Background()
+		_, err := m.db.Profile.FindUnique(
+			db.Profile.ID.Equals(winner.userID),
+		).Update(
+			db.Profile.Elo.Set(winner.Elo),
+		).Exec(ctx)
+		if err != nil {
+			log.Printf("[ERROR] Failed to update winner ELO: %v", err)
+		}
+
+		_, err = m.db.Profile.FindUnique(
+			db.Profile.ID.Equals(loser.userID),
+		).Update(
+			db.Profile.Elo.Set(loser.Elo),
+		).Exec(ctx)
+		if err != nil {
+			log.Printf("[ERROR] Failed to update loser ELO: %v", err)
+		}
+	}()
 
 	log.Printf("[WS] ELO Change: Winner %d -> %d | Loser %d -> %d", winnerOldElo, winner.Elo, loserOldElo, loser.Elo)
 }

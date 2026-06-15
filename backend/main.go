@@ -1,45 +1,40 @@
 package main
 
 import (
-	"context"
 	"log"
 	"net/http"
 	"os"
 
 	"backend/auth"     // Import auth
 	"backend/database" // Import database
+	"backend/db"
 	"backend/ws"
 
 	"github.com/gin-contrib/cors" // Import CORS middleware
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
 func main() {
 	// --- Setup ---
 	godotenv.Load()
+	
+	// Initialize JWKS for ES256 validation
+	auth.InitJWKS()
 
-	configDB, err := pgxpool.ParseConfig(os.Getenv("DATABASE_URL"))
-	if err != nil {
-		log.Fatalf("Unable to parse database URL: %v\n", err)
+	client := db.NewClient()
+	if err := client.Prisma.Connect(); err != nil {
+		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
+	defer func() {
+		if err := client.Prisma.Disconnect(); err != nil {
+			log.Fatalf("Unable to disconnect from database: %v\n", err)
+		}
+	}()
 
-	// **THIS IS THE FIX**: Disable prepared statement caching.
-	// Use simple protocol when talking to external poolers like PgBouncer.
-	configDB.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	log.Println("Successfully connected to database via Prisma.")
 
-	// 2. Create the pool using the modified config.
-	dbpool, err := pgxpool.NewWithConfig(context.Background(), configDB)
-	if err != nil {
-		log.Fatalf("Unable to create connection pool: %v\n", err)
-	}
-	defer dbpool.Close()
-
-	log.Println("Successfully connected to database (using simple protocol).")
-
-	manager := ws.NewManager(dbpool)
+	manager := ws.NewManager(client)
 	router := gin.Default()
 
 	// --- CORS Middleware ---
@@ -63,7 +58,7 @@ func main() {
 	{
 		// Public route for the leaderboard
 		api.GET("/leaderboard", func(c *gin.Context) {
-			leaderboard, err := database.FetchLeaderboard(dbpool, 10) // Get top 10
+			leaderboard, err := database.FetchLeaderboard(client, 10) // Get top 10
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not fetch leaderboard"})
 				return
@@ -83,7 +78,7 @@ func main() {
 					return
 				}
 
-				profile, err := database.FetchProfile(dbpool, userID.(string))
+				profile, err := database.FetchProfile(client, userID.(string))
 				if err != nil {
 					c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
 					return

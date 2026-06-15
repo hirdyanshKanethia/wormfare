@@ -27,10 +27,18 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		// Validate the token
 		token, err := jwt.ParseWithClaims(tokenString, &SupabaseClaims{}, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			secret := os.Getenv("SUPABASE_JWT_SECRET")
+			switch token.Method.(type) {
+			case *jwt.SigningMethodHMAC:
+				return []byte(secret), nil
+			case *jwt.SigningMethodECDSA:
+				if jwks == nil {
+					return nil, fmt.Errorf("JWKS not initialized for ES256")
+				}
+				return jwks.Keyfunc(token)
+			default:
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(os.Getenv("SUPABASE_JWT_SECRET")), nil
 		})
 
 		if err != nil || !token.Valid {

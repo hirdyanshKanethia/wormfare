@@ -2,8 +2,7 @@ package database
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgxpool"
+	"backend/db"
 )
 
 // Profile represents the public data for a single user.
@@ -13,35 +12,50 @@ type Profile struct {
 	Elo      int    `json:"elo"`
 }
 
-// FetchProfile retrieves a user's public profile from the database.
-func FetchProfile(dbpool *pgxpool.Pool, userID string) (*Profile, error) {
-	var profile Profile
-	query := "SELECT id, username, elo FROM profiles WHERE id = $1"
+// FetchProfile retrieves a user's public profile from the database using Prisma.
+func FetchProfile(client *db.PrismaClient, userID string) (*Profile, error) {
+	p, err := client.Profile.FindUnique(
+		db.Profile.ID.Equals(userID),
+	).Exec(context.Background())
 
-	err := dbpool.QueryRow(context.Background(), query, userID).Scan(&profile.UserID, &profile.Username, &profile.Elo)
 	if err != nil {
 		return nil, err
 	}
-	return &profile, nil
+
+	username := ""
+	if u, ok := p.Username(); ok {
+		username = u
+	}
+
+	return &Profile{
+		UserID:   p.ID,
+		Username: username,
+		Elo:      p.Elo,
+	}, nil
 }
 
-// FetchLeaderboard retrieves the top N players ordered by ELO.
-func FetchLeaderboard(dbpool *pgxpool.Pool, limit int) ([]Profile, error) {
-	var leaderboard []Profile
-	query := "SELECT id, username, elo FROM profiles ORDER BY elo DESC LIMIT $1"
+// FetchLeaderboard retrieves the top N players ordered by ELO using Prisma.
+func FetchLeaderboard(client *db.PrismaClient, limit int) ([]Profile, error) {
+	profiles, err := client.Profile.FindMany().
+		OrderBy(db.Profile.Elo.Order(db.SortOrderDesc)).
+		Take(limit).
+		Exec(context.Background())
 
-	rows, err := dbpool.Query(context.Background(), query, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var profile Profile
-		if err := rows.Scan(&profile.UserID, &profile.Username, &profile.Elo); err != nil {
-			return nil, err
+	var leaderboard []Profile
+	for _, p := range profiles {
+		username := ""
+		if u, ok := p.Username(); ok {
+			username = u
 		}
-		leaderboard = append(leaderboard, profile)
+		leaderboard = append(leaderboard, Profile{
+			UserID:   p.ID,
+			Username: username,
+			Elo:      p.Elo,
+		})
 	}
 
 	return leaderboard, nil

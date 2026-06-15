@@ -298,7 +298,7 @@ func (m *Manager) handleAuthentication(event *Event) {
 			return
 		}
 
-		userData, err := auth.ValidateTokenAndFetchUser(authData.Token, m.dbpool, os.Getenv("SUPABASE_JWT_SECRET"))
+		userData, err := auth.ValidateTokenAndFetchUser(authData.Token, m.db, os.Getenv("SUPABASE_JWT_SECRET"))
 		if err != nil {
 			log.Printf("[AUTH] Authentication failed for client: %v", err)
 			errMsg := map[string]string{"type": "auth_error", "payload": err.Error()}

@@ -5,10 +5,38 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"sync"
 
+	"backend/db"
+
+	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+var (
+	jwks     keyfunc.Keyfunc
+	jwksOnce sync.Once
+)
+
+// InitJWKS initializes the JWKS key function from the Supabase URL.
+func InitJWKS() {
+	jwksOnce.Do(func() {
+		supabaseURL := os.Getenv("SUPABASE_URL")
+		if supabaseURL == "" {
+			log.Println("[AUTH] Warning: SUPABASE_URL not set, ES256 validation may fail.")
+			return
+		}
+		jwksURL := fmt.Sprintf("%s/auth/v1/.well-known/jwks.json", supabaseURL)
+		
+		var err error
+		jwks, err = keyfunc.NewDefault([]string{jwksURL})
+		if err != nil {
+			log.Fatalf("[AUTH] Failed to initialize JWKS: %v", err)
+		}
+		log.Printf("[AUTH] JWKS initialized from %s", jwksURL)
+	})
+}
 
 // AuthPayload represents the structure expected in the "auth" message payload.
 type AuthPayload struct {
@@ -30,18 +58,22 @@ type UserData struct {
 	Elo    int
 }
 
-// ValidateTokenAndFetchUser validates a Supabase JWT and fetches user data.
-// It requires the JWT string, the database pool, and the JWT secret.
-// It returns the user's data or an error.
-func ValidateTokenAndFetchUser(tokenStr string, dbpool *pgxpool.Pool, jwtSecret string) (*UserData, error) {
+// ValidateTokenAndFetchUser validates a Supabase JWT and fetches user data using Prisma.
+func ValidateTokenAndFetchUser(tokenStr string, client *db.PrismaClient, jwtSecret string) (*UserData, error) {
 	// 1. Validate the JWT
 	token, err := jwt.ParseWithClaims(tokenStr, &SupabaseClaims{}, func(token *jwt.Token) (interface{}, error) {
-		// Ensure the signing method is HMAC as expected
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		// Handle different signing methods
+		switch token.Method.(type) {
+		case *jwt.SigningMethodHMAC:
+			return []byte(jwtSecret), nil
+		case *jwt.SigningMethodECDSA:
+			if jwks == nil {
+				return nil, errors.New("JWKS not initialized for ES256")
+			}
+			return jwks.Keyfunc(token)
+		default:
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		// Return the secret key from environment variables or config
-		return []byte(jwtSecret), nil
 	})
 	if err != nil {
 		// Check for specific validation errors vs. general parsing errors
@@ -65,21 +97,20 @@ func ValidateTokenAndFetchUser(tokenStr string, dbpool *pgxpool.Pool, jwtSecret 
 		return nil, fmt.Errorf("user ID (sub) not found in token claims")
 	}
 
-	// 3. Fetch ELO from Database
-	var elo int
-	query := "SELECT elo FROM profiles WHERE id = $1"
-	// Use a background context (consider using request context if available)
-	dbErr := dbpool.QueryRow(context.Background(), query, userID).Scan(&elo)
+	// 3. Fetch ELO from Database using Prisma
+	p, dbErr := client.Profile.FindUnique(
+		db.Profile.ID.Equals(userID),
+	).Exec(context.Background())
+
 	if dbErr != nil {
 		log.Printf("Error fetching profile for user %s: %v", userID, dbErr)
-		// Return a more specific error if needed, e.g., distinguish "not found"
 		return nil, fmt.Errorf("could not fetch user profile: %w", dbErr)
 	}
 
 	// 4. Return validated user data
 	userData := &UserData{
-		UserID: userID,
-		Elo:    elo,
+		UserID: p.ID,
+		Elo:    p.Elo,
 	}
 
 	return userData, nil // Success
