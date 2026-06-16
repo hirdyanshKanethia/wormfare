@@ -8,7 +8,6 @@ export default function WormDock({ children }) {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: "worm",
     drop: (item) => {
-      // If the worm was already on the board, un-place it.
       if (item.placement) {
         unplaceWorm(item.id);
       }
@@ -19,14 +18,13 @@ export default function WormDock({ children }) {
   return (
     <div
       ref={drop}
-      className={`w-full md:max-w-md p-4 rounded-lg ${
-        isOver ? "bg-green-700" : "bg-yellow-950"
-      } border-4 border-yellow-800`}
+      className={`w-full p-2 md:p-4 rounded-[20px] md:rounded-[24px] border-4 border-dashed transition-all duration-300 ${
+        isOver 
+          ? "bg-meadow/20 border-meadow scale-102 md:scale-105" 
+          : "bg-black/10 border-white/10"
+      }`}
     >
-      <h3 className="text-xl font-bold text-center mb-4">Your Army</h3>
-      <div className="flex flex-row flex-wrap gap-4 justify-center items-end">
-        {children}
-      </div>
+      {children}
     </div>
   );
 }

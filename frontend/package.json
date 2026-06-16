@@ -12,9 +12,12 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
     "@tailwindcss/vite": "^4.1.14",
+    "dnd-multi-backend": "^9.0.0",
     "react": "^19.1.1",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
+    "react-dnd-multi-backend": "^9.0.0",
+    "react-dnd-touch-backend": "^16.0.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.4",
     "tailwindcss": "^4.1.14",

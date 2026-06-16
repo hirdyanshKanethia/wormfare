@@ -40,6 +40,7 @@ export default function DraggableWorm({
     width: isHorizontal ? `${worm.length * cellSize}px` : `${cellSize}px`,
     height: isHorizontal ? `${cellSize}px` : `${worm.length * cellSize}px`,
     zIndex: 10,
+    transition: isDragging ? "none" : "top 0.2s, left 0.2s, width 0.2s, height 0.2s",
   };
 
   const imageUrl = isHorizontal ? imageUrls.horizontal : imageUrls.vertical;
@@ -49,17 +50,31 @@ export default function DraggableWorm({
       ref={isDraggable ? drag : null}
       style={containerStyle}
       onClick={handleWormClick}
-      className={`${isDraggable ? "cursor-move" : "cursor-default"} ${
-        isDragging ? "opacity-50" : ""
-      }`}
+      className={`
+        group
+        ${isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-default"} 
+        ${isDragging ? "opacity-30 scale-95" : "opacity-100"}
+      `}
     >
-      <img
-        src={imageUrl}
-        alt={worm.name}
-        draggable="false"
-        // This is the final piece that adds the visual rotation back.
-        className="w-full h-full object-cover rounded-md"
-      />
+      <div className={`
+        relative w-full h-full rounded-full transition-all duration-300
+        ${isPlaced ? "hover:ring-2 hover:ring-sunflower/50" : ""}
+      `}>
+        <img
+          src={imageUrl}
+          alt={worm.name}
+          draggable="false"
+          className={`
+            w-full h-full object-contain pointer-events-none drop-shadow-[0_0_8px_rgba(255,75,145,0.4)]
+            ${!isPlaced ? "group-hover:scale-105 group-hover:drop-shadow-[0_0_15px_rgba(255,75,145,0.8)]" : ""}
+          `}
+        />
+        
+        {/* Placement Indicator */}
+        {isDraggable && isPlaced && (
+          <div className="absolute inset-0 border-2 border-white/0 group-hover:border-white/20 rounded-full transition-colors pointer-events-none" />
+        )}
+      </div>
     </div>
   );
 }

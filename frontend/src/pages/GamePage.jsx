@@ -12,17 +12,18 @@ export default function GamePage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // If the connection drops, redirect back to the lobby.
     if (connectionStatus === "disconnected") {
-      console.log("WebSocket disconnected, redirecting to lobby...");
       navigate("/lobby", { replace: true });
     }
   }, [connectionStatus, navigate]);
 
   if (connectionStatus !== "connected") {
     return (
-      <div className="bg-gray-800 min-h-screen flex items-center justify-center text-white">
-        <h1 className="text-3xl animate-pulse">Connecting to game server...</h1>
+      <div className="bg-underground min-h-screen flex flex-col items-center justify-center text-white p-6">
+        <div className="text-8xl animate-bounce mb-8">🪱</div>
+        <h1 className="text-4xl font-display text-sunflower animate-pulse">
+          Digging Tunnel to Server...
+        </h1>
       </div>
     );
   }
@@ -31,9 +32,17 @@ export default function GamePage() {
     switch (gamePhase) {
       case "waiting":
         return (
-          <h1 className="text-4xl font-bold animate-pulse">
-            Finding an opponent...
-          </h1>
+          <div className="flex flex-col items-center">
+            <div className="relative w-32 h-32 mb-8">
+              <div className="absolute inset-0 border-4 border-meadow rounded-full animate-ping opacity-20" />
+              <div className="absolute inset-4 border-4 border-sunflower rounded-full animate-ping opacity-40" />
+              <div className="absolute inset-0 flex items-center justify-center text-5xl animate-spin">🔍</div>
+            </div>
+            <h1 className="text-5xl font-display text-white text-center">
+              Scanning the Garden<br/>
+              <span className="text-meadow text-2xl">Searching for an opponent...</span>
+            </h1>
+          </div>
         );
 
       case "placing_worms":
@@ -41,9 +50,13 @@ export default function GamePage() {
 
       case "waiting_for_opponent":
         return (
-          <h1 className="text-4xl font-bold animate-pulse">
-            Waiting for opponent to place worms...
-          </h1>
+          <div className="flex flex-col items-center">
+             <div className="text-8xl animate-bounce mb-8">🍵</div>
+             <h1 className="text-5xl font-display text-white text-center">
+              Worm Tea Break<br/>
+              <span className="text-meadow text-2xl uppercase tracking-widest">Opponent is still digging...</span>
+            </h1>
+          </div>
         );
 
       case "playing":
@@ -53,14 +66,28 @@ export default function GamePage() {
         return <GameOverUI />;
 
       default:
-        // Fallback for unexpected states
-        return <h1 className="text-4xl font-bold">Loading Game...</h1>;
+        return (
+          <div className="flex flex-col items-center">
+             <div className="text-8xl animate-spin mb-8">🌀</div>
+             <h1 className="text-4xl font-display text-white">Shifting Soil...</h1>
+          </div>
+        );
     }
   };
 
   return (
-    <div className="bg-gray-800 min-h-screen text-white flex flex-col items-center justify-center p-4">
-      {renderContent()}
+    <div className="bg-underground min-h-screen text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Dynamic Background Noise */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none select-none">
+        <div className="absolute top-10 left-10 text-4xl">🌿</div>
+        <div className="absolute bottom-20 right-20 text-4xl">🐛</div>
+        <div className="absolute top-1/2 right-10 text-4xl rotate-12">🍂</div>
+        <div className="absolute bottom-10 left-1/4 text-4xl -rotate-12">🌿</div>
+      </div>
+      
+      <div className="w-full h-full flex items-center justify-center z-10">
+        {renderContent()}
+      </div>
     </div>
   );
 }
