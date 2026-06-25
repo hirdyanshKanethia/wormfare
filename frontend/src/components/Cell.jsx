@@ -46,19 +46,25 @@ export default function Cell({
     <div
       ref={drop}
       onClick={handleClick}
-      className={`grid-cell-garden flex items-center justify-center transition-all ${isFirable ? "cursor-pointer" : "cursor-default"}`}
+      className={`grid-cell-garden flex items-center justify-center transition-all relative ${isFirable ? "cursor-pointer" : "cursor-default"} ${cellState === 1 || cellState === 2 ? "z-20" : "z-0"}`}
     >
-      <div className={`absolute inset-0 z-0 ${color}`} />
+      {/* Base grass color */}
+      <div className="absolute inset-0 bg-green-800/60 z-0" />
+      
+      <div className={`absolute inset-0 z-0 transition-colors ${color}`} />
       <div className={`absolute inset-0 z-10 transition-colors ${getOverlay()}`} />
-      
-      {/* Decorative Cell markers (small mud patches) */}
-      <div className="w-1 h-1 bg-black/10 rounded-full absolute top-1 left-1" />
-      <div className="w-0.5 h-0.5 bg-white/5 rounded-full absolute bottom-2 right-2" />
-      
-      {/* Cell Coordinates (Very subtle) */}
-      <span className="text-[6px] text-white/5 absolute bottom-0.5 left-0.5 pointer-events-none select-none">
-        {String.fromCharCode(65 + x)}{y + 1}
-      </span>
+
+      {/* Hit / Miss Indicators */}
+      {cellState === 1 && (
+        <div className="absolute inset-0 flex items-center justify-center text-white/70 text-sm md:text-xl pointer-events-none drop-shadow-md select-none animate-pulse">
+          🕳️
+        </div>
+      )}
+      {cellState === 2 && (
+        <div className="absolute inset-0 flex items-center justify-center text-red-500 text-lg md:text-3xl pointer-events-none drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] select-none">
+          💥
+        </div>
+      )}
     </div>
   );
 }

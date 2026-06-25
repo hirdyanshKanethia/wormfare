@@ -5,24 +5,24 @@ import DraggableWorm from "./DraggableWorm";
 
 const IMAGE_MAP = {
   "General C. Crawlington": {
-    horizontal: "/assets/5_cells_h.png",
-    vertical: "/assets/5_cells_v.png",
+    normal: "/assets/wormfare_5x1.png",
+    injured: "/assets/wormfare_5x1_injured_.png",
   },
   "Major Slitherford": {
-    horizontal: "/assets/4_cells_h.png",
-    vertical: "/assets/4_cells_v.png",
+    normal: "/assets/wormfare_4x1.png",
+    injured: "/assets/wormfare_4x1_injured_.png",
   },
   "Captain Coilton": {
-    horizontal: "/assets/3_cells_h.png",
-    vertical: "/assets/3_cells_v.png",
+    normal: "/assets/wormfare_3x1.png",
+    injured: "/assets/wormfare_3x1_injured.png",
   },
   "Sarge Wiggles": {
-    horizontal: "/assets/3_cells_h.png",
-    vertical: "/assets/3_cells_v.png",
+    normal: "/assets/wormfare_3x1.png",
+    injured: "/assets/wormfare_3x1_injured.png",
   },
   "Private Squirmley": {
-    horizontal: "/assets/2_cells_h.png",
-    vertical: "/assets/2_cells_v.png",
+    normal: "/assets/wormfare_2x1.png",
+    injured: "/assets/wormfare_2x1_injured.png",
   },
 };
 
@@ -114,11 +114,24 @@ export default function BattleUI() {
             >
               {Object.values(placements).map((p) => {
                 const worm = army.find((w) => w.id === p.wormId);
+                let isSunk = false;
+                if (worm) {
+                  isSunk = true;
+                  for (let i = 0; i < worm.length; i++) {
+                    const cx = p.orientation === "horizontal" ? p.x + i : p.x;
+                    const cy = p.orientation === "vertical" ? p.y + i : p.y;
+                    if (playerBoard[cy]?.[cx] !== 3) {
+                      isSunk = false;
+                      break;
+                    }
+                  }
+                }
+                
                 return worm ? (
                   <DraggableWorm
                     key={p.wormId}
                     worm={worm}
-                    placement={p}
+                    placement={{...p, isSunk}}
                     imageUrls={IMAGE_MAP[worm.name]}
                     isDraggable={false}
                   />

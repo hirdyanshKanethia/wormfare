@@ -43,7 +43,8 @@ export default function DraggableWorm({
     transition: isDragging ? "none" : "top 0.2s, left 0.2s, width 0.2s, height 0.2s",
   };
 
-  const imageUrl = isHorizontal ? imageUrls.horizontal : imageUrls.vertical;
+  const isSunk = placement && placement.isSunk;
+  const imageUrl = isSunk && imageUrls.injured ? imageUrls.injured : imageUrls.normal;
 
   return (
     <div
@@ -57,15 +58,21 @@ export default function DraggableWorm({
       `}
     >
       <div className={`
-        relative w-full h-full rounded-full transition-all duration-300
+        relative w-full h-full rounded-full transition-all duration-300 flex items-center justify-center
         ${isPlaced ? "hover:ring-2 hover:ring-sunflower/50" : ""}
       `}>
         <img
           src={imageUrl}
           alt={worm.name}
           draggable="false"
+          style={isHorizontal ? {
+            width: `${cellSize}px`,
+            height: `${worm.length * cellSize}px`,
+            transform: "rotate(-90deg)"
+          } : {}}
           className={`
-            w-full h-full object-contain pointer-events-none drop-shadow-[0_0_8px_rgba(255,75,145,0.4)]
+            object-contain pointer-events-none drop-shadow-[0_0_8px_rgba(255,75,145,0.4)]
+            ${!isHorizontal ? "w-full h-full" : "absolute"}
             ${!isPlaced ? "group-hover:scale-105 group-hover:drop-shadow-[0_0_15px_rgba(255,75,145,0.8)]" : ""}
           `}
         />
