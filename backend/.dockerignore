@@ -1,0 +1,9 @@
+# This file tells Docker which files NOT to copy into the container.
+# It makes the build faster and keeps the image clean.
+
+node_modules
+.git
+.env
+db/
+*.log
+Dockerfile
