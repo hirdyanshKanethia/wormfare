@@ -18,7 +18,7 @@ import (
 func main() {
 	// --- Setup ---
 	godotenv.Load()
-	
+
 	// Initialize JWKS for ES256 validation
 	auth.InitJWKS()
 
@@ -88,5 +88,9 @@ func main() {
 		}
 	}
 
-	router.Run(":8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	router.Run(":" + port)
 }
