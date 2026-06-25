@@ -16,11 +16,7 @@ export default function LandingPage() {
 
       <div className="max-w-4xl z-10 text-center">
         <div className="inline-block relative mb-6">
-          <img src="/logo.jpg" alt="Wormfare Logo" className="w-48 md:w-80 rounded-3xl shadow-[0_0_40px_rgba(255,196,54,0.3)] border-4 border-clay mx-auto mb-6 transform hover:scale-105 transition-transform" />
-          <h1 className="text-5xl sm:text-7xl md:text-9xl font-display text-sunflower drop-shadow-[0_8px_0_#A0522D] animate-wiggle">
-            WORMFARE
-          </h1>
-          <div className="absolute -top-6 -right-6 text-2xl md:text-4xl animate-bounce">⚔️</div>
+          <img src="/logo.png" alt="Wormfare Logo" className="w-48 md:w-80 mx-auto mb-6 transform hover:scale-105 transition-transform" />
         </div>
 
         <div className="garden-panel mb-12">

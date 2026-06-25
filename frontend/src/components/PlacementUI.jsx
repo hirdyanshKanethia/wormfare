@@ -3,6 +3,7 @@ import { useGameStore } from "../store/gameStore";
 import Board from "./Board";
 import WormDock from "./WormDock";
 import DraggableWorm from "./DraggableWorm";
+import CoachWorm from "./CoachWorm";
 
 const IMAGE_MAP = {
   "General C. Crawlington": {
@@ -142,6 +143,8 @@ export default function PlacementUI() {
           </div>
         </div>
       </div>
+      
+      <CoachWorm message={allWormsPlaced ? "All set! Hit DEPLOY to lock in your defenses!" : "Drag troops into the garden. Click a placed worm to rotate it!"} />
     </div>
   );
 }

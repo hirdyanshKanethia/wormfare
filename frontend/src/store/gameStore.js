@@ -16,6 +16,7 @@ const initialState = {
   gamePhase: "lobby",
   playerID: null,
   activeTurn: null, // will be 0 or 1
+  turnCount: 0,
   winner: null,
   gameResult: null, // "win", "lose", or "draw"
   army: [],
@@ -283,7 +284,7 @@ export const useGameStore = create((set, get) => ({
   },
 
   handleTurnUpdate: (payload) => {
-    set({ activeTurn: payload.turn });
+    set((state) => ({ activeTurn: payload.turn, turnCount: state.turnCount + 1 }));
   },
 
   handleGameOver: (payload) => {

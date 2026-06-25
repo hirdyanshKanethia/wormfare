@@ -2,6 +2,7 @@ import React from "react";
 import { useGameStore } from "../store/gameStore";
 import Board from "./Board";
 import DraggableWorm from "./DraggableWorm";
+import CoachWorm from "./CoachWorm";
 
 const IMAGE_MAP = {
   "General C. Crawlington": {
@@ -34,8 +35,15 @@ const COLOR_MAP = {
 };
 
 export default function BattleUI() {
-  const { playerBoard, opponentBoard, placements, army, playerID, activeTurn } =
-    useGameStore();
+  const {
+    playerBoard,
+    opponentBoard,
+    placements,
+    army,
+    playerID,
+    activeTurn,
+    turnCount,
+  } = useGameStore();
 
   const isMyTurn = playerID === activeTurn;
 
@@ -144,7 +152,7 @@ export default function BattleUI() {
       </div>
 
       {/* Battle Log Placeholder / Combat Intel */}
-      <div className="mt-12 w-full max-w-2xl bg-underground/60 border-2 border-white/5 rounded-3xl p-4 backdrop-blur-sm">
+      <div className="mt-12 w-full max-w-2xl bg-underground/60 border-2 border-white/5 rounded-3xl p-4 backdrop-blur-sm mb-20 md:mb-0">
         <div className="flex gap-4 items-center">
           <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
             <div className={`h-full transition-all duration-1000 ${isMyTurn ? "bg-sunflower w-full" : "bg-white/10 w-0"}`} />
@@ -152,6 +160,10 @@ export default function BattleUI() {
           <span className="text-[10px] font-display text-white/40 uppercase">Combat Intel: {isMyTurn ? "Manual Control" : "Auto-Radar Active"}</span>
         </div>
       </div>
+      
+      {turnCount <= 4 && (
+        <CoachWorm message={isMyTurn ? "Your turn, Commander! Target their soil!" : "Take cover! Enemy is returning fire!"} />
+      )}
     </div>
   );
 }
