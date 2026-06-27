@@ -17,9 +17,9 @@
 Wormfare is a real-time, multiplayer, grid-based tactical game inspired by classic Battleship. You command an elite slither-squad of earthworms, place them strategically in your garden, and take turns firing blindly at the enemy's soil until one army is completely wiped out!
 
 <p align="center">
-  <img src="./images/screenshot_1.png" alt="Screenshot 1" width="32%" />
-  <img src="./images/screenshot_2.png" alt="Screenshot 2" width="32%" />
-  <img src="./images/screenshot_3.png" alt="Screenshot 3" width="32%" />
+  <img src="./assets/screenshot_1.png" alt="Screenshot 1" width="32%" />
+  <img src="./assets/screenshot_2.png" alt="Screenshot 2" width="32%" />
+  <img src="./assets/screenshot_3.png" alt="Screenshot 3" width="32%" />
 </p>
 
 ## Features
